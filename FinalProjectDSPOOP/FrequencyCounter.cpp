@@ -7,50 +7,55 @@ FrequencyCounter::FrequencyCounter(void)
   zeroCrossed = false;
 }
 
-void FrequencyCounter::CalculateCrossing(float inputWave, bool printPeriod)
+bool FrequencyCounter::CalculateCrossing(float inputWave, bool printPeriod)
 {
   if(count < 1 )
   {
-    previousVal = checkSignVal((int)inputWave);
-    count++;
+    if(inputWave > 4 || inputWave < -4)
+    {
+      previousVal = checkSignVal((int)inputWave);
+      count++;
+    }
   }
   else
   {
-    currentVal = checkSignVal((int)inputWave);
-    if(previousVal != currentVal)
+    if(inputWave > 4 || inputWave < -4)
     {
-      zeroCrossed = true;
-      zeroCount++;
+      currentVal = checkSignVal((int)inputWave);
 
-      if(zeroCount == 6) // final crossin
+      if(previousVal != currentVal)
       {
-        if(inputWave < 5 && inputWave > -5)
+          zeroCrossed = true;
+          //Serial.print(inputWave);
+          //Serial.print(" ");
+          zeroCount++;
+
+        if(zeroCount == 3) // final crossing
         {
-          stopTime = micros();
-          //Serial.println("stop");
-          if(printPeriod == true)
-          {
-            difference = stopTime - startTime;
-            //Serial.println(getBPM());
-            Serial.println(difference/2);
-          }
+            stopTime = micros();
+            //Serial.println("stop");
+            if(printPeriod == true)
+            {
+              difference = stopTime - startTime;
+              Serial.println(getBPM());
+              //Serial.println(difference);
+            }
           zeroCount = 0;
         }
-      }
-      else if(zeroCount == 1) // first crossing
-      {
-        if(inputWave < 5 && inputWave > -5)
+        else if(zeroCount == 1) // first crossing
         {
-          startTime = micros();
+            startTime = micros();
         }
+
       }
+      else
+      {
+        zeroCrossed = false;
+      }
+      previousVal = currentVal;
     }
-    else
-    {
-      zeroCrossed = false;
-    }
-    previousVal = currentVal;
   }
+  return zeroCrossed;
 }
 
 bool FrequencyCounter::checkSignVal(int num)
@@ -63,4 +68,9 @@ float FrequencyCounter::getBPM()
 {
   bpmValue = float(60/(difference*(.000001)));
   return bpmValue;
+}
+
+void FrequencyCounter::StoreZeroCrossing(float num, int index)
+{
+
 }

@@ -17,9 +17,10 @@ private:
   bool checkSignVal(int num);
 public:
   FrequencyCounter(void);
-  void CalculateCrossing(float inputWave, bool printPeriod);
+  bool CalculateCrossing(float inputWave, bool printPeriod);
   void setPreviousVal(bool val);
   float getBPM();
+  void StoreZeroCrossing(float num, int index);
 
 };
 

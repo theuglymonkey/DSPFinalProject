@@ -1,10 +1,10 @@
 #include "appMain.h"
-#include "LowPass50Bpm.h"
 #include "HighPass50Bpm.h"
+#include "BPFilter4to20.h"
 #include <MsTimer2.h>
 #include "FrequencyCounter.h"
 volatile static int Flag_for_sample=0;
-
+volatile static int countMax = 0;
 void Sample_Flag()
 {
   Flag_for_sample = 1;
@@ -34,7 +34,7 @@ void AppMain::AppMainLoop(void)
     volatile static int inputAvData = 0;
 
     SetupArduino();
-    LowPass50Bpm Lp50;
+    BPFilter4to20 BP4to20;
     HighPass50Bpm Hp50;
     FrequencyCounter FC1;
     FrequencyCounter FC2;
@@ -51,23 +51,26 @@ void AppMain::AppMainLoop(void)
            sum=sum+(float)analogValue;
          }
          inputAvData=100.0*(sum/100.0);
-         Lp50.InputData(inputAvData);
+         BP4to20.InputData(inputAvData);
          //Hp50.InputData(inputAvData);
          //Serial.println(Hp50.OutputData());
 
-         if(count < 150)
+         if(count < 250)
          {
            count++;
-           if(count == 150)
+           Serial.println(BP4to20.OutputData());
+           if(count == 250)
            {
              Serial.println("start");
            }
          }
          else
          {
-           //Serial.println(Lp50.OutputData());
-           FC1.CalculateCrossing(Lp50.OutputData(), true);
-           //FC2.CalculateCrossing(Hp50.OutputData(), true);
+
+              //Serial.println(Lp50.OutputData());
+              FC1.CalculateCrossing(BP4to20.OutputData(), true);
+              //FC2.CalculateCrossing(Hp50.OutputData(), true);
+              //Serial.println(Lp50.OutputData());
          }
 
          Flag_for_sample = 0;
