@@ -11,7 +11,7 @@ bool FrequencyCounter::CalculateCrossing(float inputWave, bool printPeriod)
 {
   if(count < 1 )
   {
-    if(inputWave > 4 || inputWave < -4)
+    if(inputWave > 6 || inputWave < -6)
     {
       previousVal = checkSignVal((int)inputWave);
       count++;
@@ -19,7 +19,7 @@ bool FrequencyCounter::CalculateCrossing(float inputWave, bool printPeriod)
   }
   else
   {
-    if(inputWave > 4 || inputWave < -4)
+    if(inputWave > 6 || inputWave < -6)
     {
       currentVal = checkSignVal((int)inputWave);
 

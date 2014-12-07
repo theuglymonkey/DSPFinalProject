@@ -1,10 +1,19 @@
 #include "appMain.h"
-#include "HighPass50Bpm.h"
-#include "BPFilter4to20.h"
+#include <avr/pgmspace.h>
+#include "GenericFilter.h"
+#include "Generic4PoleFilter.h"
+#include "statistics.h"
+#include "RunningStat.h"
 #include <MsTimer2.h>
 #include "FrequencyCounter.h"
+#include "GenericLowPassFilter.h"
+#include "GenericHighPassFilter.h"
+#include "Alarm.h"
 volatile static int Flag_for_sample=0;
 volatile static int countMax = 0;
+
+
+
 void Sample_Flag()
 {
   Flag_for_sample = 1;
@@ -32,12 +41,57 @@ void AppMain::AppMainLoop(void)
     volatile static int analogValue =0;
     volatile static float sum=0;
     volatile static int inputAvData = 0;
+    PROGMEM float filter1Coefficents[4] = {-0.8875204559, 3.6459232389, -5.6288902880, 3.8704751718};
+    PROGMEM float filter1_2Coefficents[4] = {-0.8821677563, 3.6293674993, -5.6111685248, 3.8639259285};
 
+
+    PROGMEM float filter2Coefficents[4] = {-0.7214500922, 3.0103189958, -4.8434854978, 3.5520478794};
+    //PROGMEM float filter2Coefficents[9] = {-0.2620187409 , 2.4018920457, -9.7287210885, 22.7326853160,
+    //                                      -33.5008637410 ,31.8665172230,-19.0947152060,6.5852205275};
+    PROGMEM float filter2_2Coefficents[4] = {-0.6533308084, 2.8021605931, -4.6118955275, 3.4580896280};
+
+    PROGMEM float filter3Coefficents[9] = {-0.2572128902, 1.2917875530, -3.5596180627, 6.6071273298,
+                                           -8.9835506109,9.1610626304, -7.0184623574,3.6740462504 };
+
+    PROGMEM float filter4Coefficents[4] = {-0.2781872758, 0.5438760383, -0.9387285737, 1.4813773641};
     SetupArduino();
-    BPFilter4to20 BP4to20;
-    HighPass50Bpm Hp50;
-    FrequencyCounter FC1;
-    FrequencyCounter FC2;
+
+    GenericFilter BP3to11;
+    BP3to11.Set2PoleCoefficents(filter1Coefficents);
+    BP3to11.SetGainFactor(405.5551166);
+
+    GenericLowPassFilter BP3to11_2;
+    BP3to11_2.Set2PoleCoefficents(filter1_2Coefficents);
+    BP3to11_2.SetGainFactor(373366.8187);
+
+
+    GenericFilter BP12to39;
+    BP12to39.Set2PoleCoefficents(filter2Coefficents);
+    BP12to39.SetGainFactor(58.86421797);
+
+    GenericLowPassFilter BP12to39_2;
+    BP12to39_2.Set2PoleCoefficents(filter2_2Coefficents);
+    BP12to39_2.SetGainFactor(3215.359929);
+
+
+    Generic4PoleFilter BP40to150;
+    BP40to150.Set2PoleCoefficents(filter3Coefficents);
+    BP40to150.SetGainFactor(43.44373910);
+
+    //FrequencyCounter FC1;
+    RunningStat rs1;
+    RunningStat rs2;
+    RunningStat rs3;
+
+    Alarm alarmLow;
+    Alarm alarmNormal;
+    Alarm alarmHigh;
+    alarmLow.SetTriggerLevels(8000,100000);
+    alarmNormal.SetTriggerLevels(250,800);
+    alarmHigh.SetTriggerLevels(60,250);
+
+    int preDa = 0;
+    int curDa;
     for(;;)
     {
       if (Flag_for_sample>0)
@@ -51,26 +105,107 @@ void AppMain::AppMainLoop(void)
            sum=sum+(float)analogValue;
          }
          inputAvData=100.0*(sum/100.0);
-         BP4to20.InputData(inputAvData);
-         //Hp50.InputData(inputAvData);
-         //Serial.println(Hp50.OutputData());
 
-         if(count < 250)
+         //inputAvData = (preDa + inputAvData)/2;
+         //preDa = inputAvData;
+
+
+         //BP3to11.InputData(inputAvData);
+         BP3to11_2.InputData(inputAvData);
+         //BP3to11_2.InputData(BP3to11.OutputData());
+
+         BP12to39.InputData(inputAvData);
+         BP12to39_2.InputData(BP12to39.OutputData());
+
+         BP40to150.InputData(inputAvData);
+
+        /*wait 250 samples to stabalize filter*/
+         if(count < 256)
          {
            count++;
-           Serial.println(BP4to20.OutputData());
-           if(count == 250)
+           /*
+          if(count == 3)
+          {
+            //BP3to11.InputData(1);
+            //BP3to11_2.InputData(BP3to11.OutputData());
+
+            BP12to39.InputData(1);
+            BP12to39_2.InputData(BP12to39.OutputData());
+
+          }
+          else
+          {
+            //BP3to11.InputData(0);
+            //BP3to11_2.InputData(BP3to11.OutputData());
+            BP12to39.InputData(0);
+            BP12to39_2.InputData(BP12to39.OutputData());
+
+          }
+          Serial.println(BP12to39_2.OutputData());
+*/
+
+           if(count == 256)
            {
-             Serial.println("start");
+              Serial.println("start");
+              rs1.Clear();
            }
+           else if(count > 200)
+           {
+             //rs1.Push(BP3to11_2.OutputData());
+             rs2.Push(BP12to39_2.OutputData());
+             rs3.Push(BP40to150.OutputData());
+           }
+
          }
          else
          {
+           count++;
+           //rs1.Push(BP3to11_2.OutputData());
+           rs2.Push(BP12to39_2.OutputData());
+           rs3.Push(BP40to150.OutputData());
 
-              //Serial.println(Lp50.OutputData());
-              FC1.CalculateCrossing(BP4to20.OutputData(), true);
-              //FC2.CalculateCrossing(Hp50.OutputData(), true);
-              //Serial.println(Lp50.OutputData());
+           //alarmLow.Input(rs1.Variance());
+           alarmNormal.Input(rs2.Variance());
+           alarmHigh.Input(rs3.Variance());
+           if(count > 855) // every min
+           {
+
+            // if(alarmLow.Output() == true)
+            // {
+            //   Serial.println("Low");
+            // }
+             if(alarmNormal.Output() == true)
+             {
+               Serial.println("Normal");
+             }
+             else if(alarmHigh.Output() == true)
+             {
+               Serial.println("High");
+             }
+             else
+             {
+               Serial.println("NaN");
+             }
+
+             rs1.Clear();
+             rs2.Clear();
+             rs3.Clear();
+             count = 256;
+             //Serial.println("clear");
+           }
+
+            //Serial.print(rs1.Variance());
+            //Serial.print(BP3to11_2.OutputData());
+            //Serial.print(" ");
+
+            //Serial.print(rs2.Variance());
+            //Serial.print(BP12to39_2.OutputData());
+            //Serial.print(" ");
+            //Serial.print(rs3.Variance());
+            //Serial.print(BP40to150.OutputData());
+            //Serial.println(" ");
+
+
          }
 
          Flag_for_sample = 0;
