@@ -28,6 +28,8 @@ void AppMain::SetupArduino(void)
 {
   Serial.begin(9600);
   analogReference(DEFAULT);  // for 5.0 volt power supply reference
+  pinMode(2, INPUT_PULLUP);
+
   delay(500);
 
   // Make two reads from A/D to get it running and eliminate first few bad values
@@ -46,8 +48,7 @@ void AppMain::AppMainLoop(void)
 
 
     PROGMEM float filter2Coefficents[4] = {-0.7214500922, 3.0103189958, -4.8434854978, 3.5520478794};
-    //PROGMEM float filter2Coefficents[9] = {-0.2620187409 , 2.4018920457, -9.7287210885, 22.7326853160,
-    //                                      -33.5008637410 ,31.8665172230,-19.0947152060,6.5852205275};
+
     PROGMEM float filter2_2Coefficents[4] = {-0.6533308084, 2.8021605931, -4.6118955275, 3.4580896280};
 
     PROGMEM float filter3Coefficents[9] = {-0.2572128902, 1.2917875530, -3.5596180627, 6.6071273298,
@@ -87,8 +88,8 @@ void AppMain::AppMainLoop(void)
     Alarm alarmNormal;
     Alarm alarmHigh;
     alarmLow.SetTriggerLevels(8000,100000);
-    alarmNormal.SetTriggerLevels(250,800);
-    alarmHigh.SetTriggerLevels(60,250);
+    alarmNormal.SetTriggerLevels(450,4500);
+    alarmHigh.SetTriggerLevels(200,550);
 
     int preDa = 0;
     int curDa;
@@ -109,7 +110,7 @@ void AppMain::AppMainLoop(void)
          //inputAvData = (preDa + inputAvData)/2;
          //preDa = inputAvData;
 
-
+        //  Serial.println(inputAvData);
          //BP3to11.InputData(inputAvData);
          BP3to11_2.InputData(inputAvData);
          //BP3to11_2.InputData(BP3to11.OutputData());
@@ -169,41 +170,44 @@ void AppMain::AppMainLoop(void)
            alarmHigh.Input(rs3.Variance());
            if(count > 855) // every min
            {
-
-            // if(alarmLow.Output() == true)
-            // {
-            //   Serial.println("Low");
-            // }
-             if(alarmNormal.Output() == true)
+             if(digitalRead(2) != 1)
              {
-               Serial.println("Normal");
-             }
-             else if(alarmHigh.Output() == true)
-             {
-               Serial.println("High");
+               if(alarmNormal.Output() == true)
+               {
+                 Serial.println("Normal");
+               }
+               else if(alarmHigh.Output() == true)
+               {
+                 Serial.println("High");
+               }
+               else
+               {
+                 Serial.println("Low");
+               }
              }
              else
              {
-               Serial.println("NaN");
+               Serial.println("Error Sensor Disconnected");
              }
 
              rs1.Clear();
              rs2.Clear();
              rs3.Clear();
              count = 256;
-             //Serial.println("clear");
            }
+             //Serial.println("clear");
+
 
             //Serial.print(rs1.Variance());
             //Serial.print(BP3to11_2.OutputData());
             //Serial.print(" ");
 
-            //Serial.print(rs2.Variance());
+            Serial.print(rs2.Variance());
             //Serial.print(BP12to39_2.OutputData());
-            //Serial.print(" ");
-            //Serial.print(rs3.Variance());
+            Serial.print(" ");
+            Serial.print(rs3.Variance());
             //Serial.print(BP40to150.OutputData());
-            //Serial.println(" ");
+            Serial.println(" ");
 
 
          }
